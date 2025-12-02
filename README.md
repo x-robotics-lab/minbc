@@ -411,5 +411,18 @@ python train.py train --data.data-key joint_positions joint_velocities
 
 MinBC is modified from [HATO](https://github.com/toruowo/hato) DP part, which is a simplification of the original Diffusion Policy.
 
+## Citations
+```
+@article{hsieh2025learning,
+  title={Learning Dexterous Manipulation Skills from Imperfect Simulations},
+  author={Hsieh$^{*}$, Elvis and Hsieh$^{*}$, Wen-Han and Wang$^{*}$, Yen-Jen 
+           and Lin, Toru and Malik, Jitendra and Sreenath$^{\dagger}$, Koushil 
+           and Qi$^{\dagger}$, Haozhi},
+  journal={arXiv preprint arXiv:2512.02011},
+  year={2025},
+  note={* Equal contribution (alphabetical order). † Equal advising.},
+  url={https://arxiv.org/abs/2512.02011}
+}
+
 ## Questions?
 If you have any questions, please feel free to contact [Yen-Jen Wang](https://wangyenjen.github.io/) and [Haozhi Qi](https://haozhi.io/).
