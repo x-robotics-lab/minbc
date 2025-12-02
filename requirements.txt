@@ -1,0 +1,22 @@
+# Core dependencies
+torch>=2.0.0
+torchvision>=0.15.0
+numpy>=1.23.0
+
+# Diffusion models
+diffusers>=0.21.0
+
+# Configuration
+tyro>=0.5.0
+
+# Logging and visualization
+tensorboard>=2.13.0
+
+# Data processing
+pillow>=9.0.0
+opencv-python>=4.7.0
+
+# Utilities
+tqdm>=4.65.0
+matplotlib>=3.7.0
+
