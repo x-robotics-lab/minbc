@@ -415,12 +415,9 @@ MinBC is modified from [HATO](https://github.com/toruowo/hato) DP part, which is
 ```
 @article{hsieh2025learning,
   title={Learning Dexterous Manipulation Skills from Imperfect Simulations},
-  author={Hsieh, Elvis and Hsieh, Wen-Han and Wang, Yen-Jen 
-           and Lin, Toru and Malik, Jitendra and Sreenath, Koushil 
-           and Qi, Haozhi},
-  journal={arXiv preprint arXiv:2512.02011},
-  year={2025},
-  url={https://arxiv.org/abs/2512.02011}
+  author={Hsieh, Elvis and Hsieh, Wen-Han and Wang, Yen-Jen and Lin, Toru and Malik, Jitendra and Sreenath, Koushil and Qi, Haozhi},
+  journal={arXiv:2512.02011},
+  year={2025}
 }
 ```
 
