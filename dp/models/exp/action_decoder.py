@@ -4,7 +4,7 @@ from .block import ResidualBlock1D, Upsample1d, Downsample1d, ConditionalResidua
 
 
 class MLPDecoder(nn.Module):
-    def __init__(self, in_channels, act_dim, pre_horizon, feature_dim=1024):
+    def __init__(self, in_channels, act_dim, pre_horizon, num_proposals, feature_dim=1024):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(in_channels, feature_dim),
@@ -23,7 +23,12 @@ class MLPDecoder(nn.Module):
             nn.LayerNorm(256),
             nn.ReLU(),
         )
-        self.action_pred = nn.Linear(256, act_dim * pre_horizon)
+        self.action_pred = nn.Linear(256, act_dim * pre_horizon * num_proposals)
+        if num_proposals > 1:
+            self.score_pred = nn.Linear(256, num_proposals)
+        else:
+            self.score_pred = nn.Identity()
+        self.num_proposals = num_proposals
         self.pre_horizon = pre_horizon
         self.action_dim = act_dim
 
@@ -31,12 +36,20 @@ class MLPDecoder(nn.Module):
         batch_size = x.shape[0]
         x = self.net(x)
         act = self.action_pred(x)
-        act = act.reshape(batch_size, self.pre_horizon, self.action_dim)
-        return act
+        score = self.score_pred(x)
+        if self.num_proposals > 1:
+            act = act.reshape(
+                batch_size, self.num_proposals, self.pre_horizon, self.action_dim
+            )
+        else:
+            act = act.reshape(
+                batch_size, self.pre_horizon, self.action_dim
+            )
+        return act, score
 
 
 class HourglassDecoder(nn.Module):
-    def __init__(self, in_channels, act_dim, pre_horizon, feature_dim=1024,
+    def __init__(self, in_channels, act_dim, pre_horizon, num_proposals, feature_dim=1024,
                  last_dropout=0.0, cond_dropout=0.0):
         super().__init__()
         kernel_size = 5
@@ -47,6 +60,7 @@ class HourglassDecoder(nn.Module):
         self.ffn = nn.Linear(in_channels, in_channels * pre_horizon)
         self.pre_horizon = pre_horizon
         self.action_dim = act_dim
+        self.num_proposals = num_proposals
         mid_dim = all_dims[-1]
         self.mid_modules = nn.ModuleList([
             ResidualBlock1D(
@@ -88,7 +102,8 @@ class HourglassDecoder(nn.Module):
             )
         self.up_modules = up_modules
         self.down_modules = down_modules
-        self.act_pred = nn.Linear(256, act_dim)
+        self.score_pred = nn.Linear(256 * self.pre_horizon, self.num_proposals)
+        self.act_pred = nn.Linear(256, self.num_proposals * act_dim)
         if last_dropout > 0:
             self.last_dropout = nn.Dropout(p=last_dropout, inplace=True)
         else:
@@ -125,12 +140,20 @@ class HourglassDecoder(nn.Module):
         # x: (batch, horizon x feature
         x = self.last_dropout(x)
         act = self.act_pred(x)
-        act = act.reshape(batch_size, self.pre_horizon, self.action_dim)
-        return act
+        score = self.score_pred(x.reshape(batch_size, -1))
+        if self.num_proposals > 1:
+            act = act.reshape(batch_size, self.pre_horizon, self.num_proposals, self.action_dim)
+            act = act.permute(0, 2, 1, 3)
+            score = score.reshape(batch_size, self.num_proposals)
+        else:
+            act = act.reshape(
+                batch_size, self.pre_horizon, self.action_dim
+            )
+        return act, score
 
 
 class CondHourglassDecoder(nn.Module):
-    def __init__(self, in_channels, act_dim, pre_horizon, feature_dim=1024,
+    def __init__(self, in_channels, act_dim, pre_horizon, num_proposals, feature_dim=1024,
                  last_dropout=0.0, cond_dropout=0.0):
         super().__init__()
         kernel_size = 5
@@ -140,6 +163,7 @@ class CondHourglassDecoder(nn.Module):
         in_out = list(zip(all_dims[:-1], all_dims[1:]))
         self.pre_horizon = pre_horizon
         self.action_dim = act_dim
+        self.num_proposals = num_proposals
         mid_dim = all_dims[-1]
         self.mid_modules = nn.ModuleList([
             ConditionalResidualBlock1D(
@@ -181,9 +205,10 @@ class CondHourglassDecoder(nn.Module):
             )
         self.up_modules = up_modules
         self.down_modules = down_modules
+        self.score_pred = nn.Linear(256 * self.pre_horizon, 1)
         self.act_pred = nn.Linear(256, act_dim)
         self.cls_token = torch.nn.Parameter(
-            torch.randn(1, 1, act_dim, self.pre_horizon)
+            torch.randn(1, self.num_proposals, act_dim, self.pre_horizon)
         )  # "global information"
         torch.nn.init.normal_(self.cls_token, std=0.02)
         if last_dropout > 0:
@@ -199,8 +224,9 @@ class CondHourglassDecoder(nn.Module):
         h = []
         batch_size = cond.shape[0]
         cond = self.cond_dropout(cond)
-        x = self.cls_token.repeat(batch_size, 1, 1, 1)
-        x = x.reshape(batch_size, self.action_dim, self.pre_horizon)
+        x = self.cls_token.repeat(cond.shape[0], 1, 1, 1)
+        x = x.reshape(cond.shape[0] * self.num_proposals, self.action_dim, self.pre_horizon)
+        cond = cond[:, None].repeat(1, self.num_proposals, 1).reshape(cond.shape[0] * self.num_proposals, -1)
         for idx, (resnet, resnet2, downsample) in enumerate(self.down_modules):
             x = resnet(x, cond)
             x = resnet2(x, cond)
@@ -217,8 +243,11 @@ class CondHourglassDecoder(nn.Module):
             x = upsample(x)
         # x: (batch, feature_dim) x horizon
         x = x.permute(0, 2, 1)
+        x = x.reshape(batch_size, self.num_proposals, self.pre_horizon, -1)
         x = self.last_dropout(x)
         # x: (batch, horizon x feature
         act = self.act_pred(x)
-        act = act.reshape(batch_size, self.pre_horizon, self.action_dim)
-        return act
+        score = self.score_pred(x.reshape(batch_size, self.num_proposals, -1))
+        if self.num_proposals > 1:
+            score = score.reshape(batch_size, self.num_proposals)
+        return act, score

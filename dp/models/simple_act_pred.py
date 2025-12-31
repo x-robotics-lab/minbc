@@ -51,13 +51,15 @@ class SinusoidalPosEmb(nn.Module):
 
 class VanillaBC(nn.Module):
     def __init__(
-        self, config: MinBCConfig, input_dim, device="cpu"
+        self, config: MinBCConfig, input_dim, num_proposals=3, device="cpu"
     ):
         super().__init__()
         self.obs_horizon = config.dp.obs_horizon
         self.pre_horizon = config.dp.pre_horizon
         self.action_dim = input_dim
+        self.num_proposal = num_proposals
         self.clip_actions = config.dp.clip_actions
+        self.clip_action_scores = config.dp.clip_action_scores
         self.device = device
         self.data_key = config.data.data_key
         self.image_num = len(config.data.im_key)
@@ -173,19 +175,19 @@ class VanillaBC(nn.Module):
         if self.decoder_type == "mlp":
             self.act_decoder = MLPDecoder(
                 global_cond_dim, self.action_dim,
-                self.pre_horizon
+                self.pre_horizon, self.num_proposal
             )
         elif self.decoder_type == "hourglass":
             self.act_decoder = HourglassDecoder(
                 global_cond_dim, self.action_dim,
-                self.pre_horizon,
+                self.pre_horizon, self.num_proposal,
                 last_dropout=config.dp.last_dropout,
                 cond_dropout=config.dp.cond_dropout,
             )
         elif self.decoder_type == "cond_hourglass":
             self.act_decoder = CondHourglassDecoder(
                 global_cond_dim, self.action_dim,
-                self.pre_horizon,
+                self.pre_horizon, self.num_proposal,
                 last_dropout=config.dp.last_dropout,
                 cond_dropout=config.dp.cond_dropout,
             )
@@ -267,10 +269,12 @@ class VanillaBC(nn.Module):
 
     def bc_model(self, x):
         # (B, feature_dim)
-        act = self.act_decoder(x)
+        act, score = self.act_decoder(x)
         if self.clip_actions:
             act = torch.clamp(act, min=-1, max=1)
-        return act
+        if self.clip_action_scores:
+            score = torch.clamp(score, min=0)
+        return act, score
 
     def forward(self, x):
         x = self.forward_encoder(x)

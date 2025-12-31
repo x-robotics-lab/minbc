@@ -53,7 +53,10 @@ class VanillaBCPolicy:
         self.binarize_touch = binarize_touch
         # create network object
         self.device = device
-        self.model = VanillaBC(config, input_dim=action_dim, device=self.device)
+        self.num_proposals = config.dp.num_proposal
+        self.clip_score_loss_max = config.dp.clip_score_loss_max
+        self.clip_score_loss = config.dp.clip_score_loss
+        self.model = VanillaBC(config, input_dim=action_dim, num_proposals=self.num_proposals, device=self.device)
         # Exponential Moving Average of the model weights
         self.ema = EMAModel(parameters=self.model.parameters(), power=0.75)
         self.ema_nets = copy.deepcopy(self.model)
@@ -146,10 +149,21 @@ class VanillaBCPolicy:
                 ### IMPT: make sure input is always in this order
                 # eef, hand_pos, img, pos, touch
 
-                # predict the action
-                pred_action = self.model(data)
-                pred_action = pred_action.reshape(-1, self.pred_horizon, self.action_dim)
-                loss = nn.functional.mse_loss(gt_action, pred_action)
+                # predict the noise residual
+                pred_action, pred_score = self.model(data)
+                if self.num_proposals > 1:
+                    _gt = gt_action[:, None].repeat(1, self.num_proposals, 1, 1)
+                    loss = nn.functional.mse_loss(_gt, pred_action, reduction='none').mean(dim=(2, 3))
+                    score_loss = ((pred_score - loss.detach()) ** 2)
+                    if self.clip_score_loss:
+                        score_loss = torch.clip(score_loss, max=self.clip_score_loss_max)
+                    score_loss = score_loss.mean()
+                    loss_mask = loss.argmin(dim=1)
+                    loss = loss[torch.arange(loss.shape[0]), loss_mask]
+                    loss = loss.mean() + score_loss
+                else:
+                    pred_action = pred_action.reshape(-1, self.pred_horizon, self.action_dim)
+                    loss = nn.functional.mse_loss(gt_action, pred_action)
 
                 # optimize
                 loss.backward()
@@ -183,6 +197,8 @@ class VanillaBCPolicy:
                 pred_action_max = torch.abs(pred_action).max()
                 self.writer.add_scalar(f'pred_act_max', pred_action_max.item(), global_training_step)
                 self.writer.add_scalar(f'loss', loss.item(), global_training_step)
+                if self.num_proposals > 1:
+                    self.writer.add_scalar(f'score_loss', score_loss.item(), global_training_step)
                 global_training_step += 1
 
                 self.optimizer.step()
@@ -258,8 +274,12 @@ class VanillaBCPolicy:
         for data in test_loader:
             gt_action = data["action"].to(self.device)
 
-            pred_action = self.ema_nets(data)
-            pred_action = pred_action.reshape(-1, self.pred_horizon, self.action_dim)
+            pred_action, pred_score = self.ema_nets(data)
+            if self.num_proposals > 1:
+                score_mask = pred_score.argmin(dim=1)
+                pred_action = pred_action[torch.arange(pred_action.shape[0]), score_mask]
+            else:
+                pred_action = pred_action.reshape(-1, self.pred_horizon, self.action_dim)
 
             # unnormalize action
             noisy_action = pred_action.detach().to("cpu").numpy()
@@ -329,8 +349,12 @@ class VanillaBCPolicy:
             for data_key in self.config.data.data_key:
                 sample = self._get_data_forward(stats, percentiles, obs_deque, data_key)
                 data[data_key] = sample
-            pred_action = self.ema_nets(data)
-            pred_action = pred_action.reshape(-1, self.pred_horizon, self.action_dim)
+            pred_action, pred_score = self.ema_nets(data)
+            if self.num_proposals > 1:
+                score_mask = pred_score.argmin(dim=1)
+                pred_action = pred_action[torch.arange(pred_action.shape[0]), score_mask]
+            else:
+                pred_action = pred_action.reshape(-1, self.pred_horizon, self.action_dim)
 
         # unnormalize action
         action = pred_action.detach().to("cpu").numpy()

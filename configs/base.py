@@ -37,10 +37,14 @@ class DPConfig:
     pre_horizon: int = 16
     diffusion_iters: int = 100
     diffusion_method: Literal["ddim", "ddpm"] = "ddpm"
+    num_proposal: int = 5
     action_decoder: Literal["mlp", "hourglass", "cond_hourglass"] = "mlp"
     last_dropout: float = 0.0
     cond_dropout: float = 0.0
     clip_actions: bool = False
+    clip_action_scores: bool = False
+    clip_score_loss_max: float = 10.0
+    clip_score_loss: bool = False
 
 
 @dataclass(frozen=True)
