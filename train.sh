@@ -14,6 +14,7 @@ BATCH_SIZE=128
 NUM_EPOCHS=100
 LEARNING_RATE=0.0005
 SEED=3
+NUM_PROPOSAL=1  # 1 for standard BC, >1 for Choice Policy (CP)
 
 # Output configuration
 OUTPUT_NAME="bc-${timestamp}"
@@ -30,6 +31,7 @@ torchrun --standalone --nnodes=1 --nproc_per_node=${NUM_GPUS} \
     --optim.num-epoch ${NUM_EPOCHS} \
     --optim.learning-rate ${LEARNING_RATE} \
     --optim.batch-size ${BATCH_SIZE} \
+    --dp.num-proposal ${NUM_PROPOSAL} \
     --output_name "${OUTPUT_NAME}"
 
 echo ""
