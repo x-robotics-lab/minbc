@@ -100,6 +100,13 @@ MinBC is modified from [HATO](https://github.com/toruowo/hato) DP part, which is
   journal={arXiv:2512.02011},
   year={2025}
 }
+
+@article{qi2025coordinated,
+  title={Coordinated Humanoid Manipulation with Choice Policies},
+  author={Qi, Haozhi and Wang, Yen-Jen and Lin, Toru and Yi, Brent and Ma, Yi and Sreenath, Koushil and Malik, Jitendra},
+  journal={arXiv:2512.25072},
+  year={2025}
+}
 ```
 
 ## Questions?
