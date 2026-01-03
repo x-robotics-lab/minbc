@@ -1,6 +1,6 @@
-# MinBC - Minimal Behavior Cloning
+<h1 align="center"> MinBC: Minimal Behavior Cloning </h1>
 
-A simple implementation for robot behavior cloning with support for Vanilla BC, Diffusion Policy, and Choice Policy.
+MinBC is a library for training behavior cloning (BC) policies and has been used in our past projects “DexScrew” and “Choice Policy.” It supports vanilla BC with action chunking, diffusion policies, and choice policies.
 
 ## Installation
 
@@ -13,13 +13,6 @@ A simple implementation for robot behavior cloning with support for Vanilla BC, 
 ```bash
 pip install -r requirements.txt
 ```
-
-Required packages:
-- PyTorch >= 2.0.0
-- torchvision >= 0.15.0
-- diffusers >= 0.21.0
-- tyro >= 0.5.0
-- tensorboard >= 2.13.0
 
 ## Quick Start
 
@@ -48,15 +41,15 @@ bash train.sh
 
 ## Key Configuration Options
 
-| Parameter | Description |
-|-----------|-------------|
-| `--gpu` | GPU IDs (e.g., "0" or "0,1,2,3") |
-| `--policy-type` | `bc` (Vanilla BC) or `dp` (Diffusion Policy) |
-| `--dp.num-proposal` | `1` = Standard BC, `>1` = Choice Policy (CP) |
-| `--data.data-key` | Data modalities: `img`, `joint_positions`, `joint_velocities`, `xhand_pos`, etc. |
-| `--data.im-encoder` | Vision encoder: `DINOv3`, `DINO`, `CLIP`, `scratch` |
-| `--optim.batch-size` | Batch size (default: 128) |
-| `--optim.num-epoch` | Number of epochs (default: 30) |
+| Parameter             | Description                                                                      |
+|-----------------------|----------------------------------------------------------------------------------|
+| `--gpu`               | GPU IDs (e.g., "0" or "0,1,2,3")                                                 |
+| `--policy-type`       | `bc` (Vanilla BC) or `dp` (Diffusion Policy)                                     |
+| `--dp.num-proposal`   | `1` = Standard BC, `>1` = Choice Policy (CP)                                     |
+| `--data.data-key`     | Data modalities: `img`, `joint_positions`, `joint_velocities`, `xhand_pos`, etc. |
+| `--data.im-encoder`   | Vision encoder: `DINOv3`, `DINO`, `CLIP`, `scratch`                              |
+| `--optim.batch-size`  | Batch size (default: 128)                                                        |
+| `--optim.num-epoch`   | Number of epochs (default: 30)                                                   |
 
 Default values can be modified in `configs/base.py`.
 
@@ -88,10 +81,6 @@ Results saved to `outputs/<output_name>/`:
 
 Monitor with: `tensorboard --logdir outputs/`
 
-## Acknowledgements
-
-MinBC is modified from [HATO](https://github.com/toruowo/hato) DP part, which is a simplification of the original Diffusion Policy.
-
 ## Citations
 ```
 @article{hsieh2025learning,
@@ -111,3 +100,8 @@ MinBC is modified from [HATO](https://github.com/toruowo/hato) DP part, which is
 
 ## Questions?
 Contact [Yen-Jen Wang](https://wangyenjen.github.io/) or [Haozhi Qi](https://haozhi.io/).
+
+
+## Acknowledgements
+
+MinBC is modified from [HATO](https://github.com/toruowo/hato) DP part, which is a simplification of the original [Diffusion Policy](https://github.com/real-stanford/diffusion_policy).
