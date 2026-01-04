@@ -1,6 +1,14 @@
 <h1 align="center"> MinBC: Minimal Behavior Cloning </h1>
 
-MinBC is a library for training behavior cloning (BC) policies and has been used in our past projects “DexScrew” and “Choice Policy.” It supports vanilla BC with action chunking, diffusion policies, and choice policies.
+MinBC is a lightweight library for training behavior cloning (BC) policies for robot manipulation. It has been used in several of our research projects and supports multiple imitation learning algorithms with a unified training interface.
+
+Currently supported policies:
+
+- Standard (Vanilla) Behavior Cloning with action chunking 
+- Diffusion Policy 
+- Choice Policy (see our paper for details)
+
+Disclaimer: This codebase is under active development. For the reference implementation used in the [dexscrew](https://dexscrew.github.io/) paper, please refer to [this version](https://github.com/x-robotics-lab/minbc/tree/b64c53f59ccb47230df16b3da31def8f16694557).
 
 ## Installation
 
@@ -16,42 +24,60 @@ pip install -r requirements.txt
 
 ## Quick Start
 
-```bash
-# View all available parameters
-python train.py train --help
+This section demonstrates how to train a policy using a small humanoid manipulation dataset from our Choice Policy paper.
 
-# Basic training (without images)
-python train.py train \
-  --gpu 0 \
-  --data.data-key joint_positions joint_velocities \
-  --optim.batch-size 128 \
-  --optim.num-epoch 300
+### Dataset Preparation
 
-# With images (DINOv3)
-python train.py train \
-  --gpu 0 \
-  --data.data-key img joint_positions \
-  --data.im-encoder DINOv3 \
-  --data.dinov3-model-dir /path/to/dinov3 \
-  --data.dinov3-weights-path /path/to/dinov3.ckpt
-
-# Multi-GPU training
-bash train.sh
+Download the `gr1_dishwasher_debug` dataset
+```
+gdown 1iQJRAC0CMp4P2UhDFx9o1tBmG4bGfGkF -O data/gr1_dishwasher_debug.zip
+cd data
+unzip gr1_dishwasher_debug.zip -d ./
+cd ../
 ```
 
-## Key Configuration Options
+It contains 1 training trajectory and 1 test trajectory. The expected directory structure is:
+```
+data/
+  gr1_dishwasher_debug/
+    train/
+    test/
+```
 
-| Parameter             | Description                                                                      |
-|-----------------------|----------------------------------------------------------------------------------|
-| `--gpu`               | GPU IDs (e.g., "0" or "0,1,2,3")                                                 |
-| `--policy-type`       | `bc` (Vanilla BC) or `dp` (Diffusion Policy)                                     |
-| `--dp.num-proposal`   | `1` = Standard BC, `>1` = Choice Policy (CP)                                     |
-| `--data.data-key`     | Data modalities: `img`, `joint_positions`, `joint_velocities`, `xhand_pos`, etc. |
-| `--data.im-encoder`   | Vision encoder: `DINOv3`, `DINO`, `CLIP`, `scratch`                              |
-| `--optim.batch-size`  | Batch size (default: 128)                                                        |
-| `--optim.num-epoch`   | Number of epochs (default: 30)                                                   |
+### Training
 
-Default values can be modified in `configs/base.py`.
+Using this minimal data, you can run the following command for training and evaluation:
+```
+python train.py train --gpu 0 --seed 0 \
+--optim.num_epoch 100 --optim.learning-rate 0.0005 --optim.batch-size 64 \  # learning algorithm
+--data.pred-head-act \
+--policy-type bc --dp.action_decoder cond_hourglass --data.base_action_dim 26 \
+--data.data-key img gr1_upper hand_qpos --data.im-key head_image left_wrist_image right_wrist_image \
+--data.im-encoder scratch \
+--train_data gr1_dishwasher_debug/train --test_data gr1_dishwasher_debug/test \
+--output_name gr1_dishwasher_debug/example_test/
+```
+
+In the above command, `num_epoch, learning_rate, batch_size` are standard optimization parameters. `train_data, test_data, output_name` are training path setup. `policy-type` specifies which imitation learning policy you want to use, use `policy-type bc` for naive behavior cloning, `policy-type dp` for diffusion policy, `--policy-type bc --dp.num-proposl 5` for choice policy.
+
+Another useful setup parameter is `data-key` and `im-key`, as the name indicates, it specify what input modality is used. If your dataset has another input type, you should also manually add the vector dimension for the `INPUT_DIM` variable in `config/base.py`.
+
+For multi-gpu training, you can use the following command 
+`
+OMP_NUM_THREADS=1 torchrun --standalone --nnodes=1 --nproc_per_node=4 learning/train.py train --gpu 0,1,2,3 --multi-gpu
+`
+For using pretrained image encoder one can use `--data.im-encoder DINOv3 --dp.encoder.im-encoder-frozen`
+
+```
+OMP_NUM_THREADS=1 torchrun --standalone --nnodes=1 --nproc_per_node=4 learning/train.py train --gpu 0,1,2,3 --multi-gpu --seed 3 \
+--optim.num_epoch 100 --optim.learning-rate 0.0005 \
+--data.pred-head-act --optim.batch-size 128 \
+--policy-type bc --dp.action_decoder cond_hourglass \
+--train_data 250815_dishwasher_nowaist/train \
+--test_data 250815_dishwasher_nowaist/test \
+--data.im-encoder DINOv3 --dp.encoder.im-encoder-frozen --data.data-key img gr1_upper hand_qpos \
+--output_name 250815_dishwasher_nowaist/250827_all_bc_without_clip_3
+```
 
 ## Data Format
 

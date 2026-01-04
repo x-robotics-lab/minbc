@@ -31,11 +31,6 @@ def iterate(path, config, workers=32, load_img=True, num_cam=3):
         try:
             # Process each file sequentially
             d = from_pickle(config, os.path.join(path, file), load_img)
-            # TODO: ask toru
-            # Uncomment the following block if needed
-            # if not d["activated"]["l"] and not d["activated"]["r"]:
-            #     continue
-
             basedirfile = os.path.join(dirname, file)
             maskfile = os.path.join(root_path, basedirfile)
 

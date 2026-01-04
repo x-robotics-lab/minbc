@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Literal, Tuple
+from typing import Literal, Tuple, Dict
 
 
 @dataclass(frozen=True)
@@ -57,12 +57,25 @@ class OptimConfig:
 
 @dataclass(frozen=True)
 class DataConfig:
+    INPUT_DIM = {
+        "joint_positions": 12,
+        "joint_velocities": 12,
+        "eef_speed": 12,
+        "ee_pos_quat": 12,
+        "xhand_pos": 12,
+        "xhand_tactile": 1800,
+        "gr1_upper": 20,  # fourier GR-1, 3 head, 3 waist, 2 arms
+        "hand_qpos": 12,  # 2 ability hands
+    }
     # Data modalities to use
     # Example with image: ("img", "joint_positions", "xhand_pos")
     # Example without image: ("joint_positions", "joint_velocities", "eef_speed", "ee_pos_quat", "xhand_pos", "xhand_tactile")
     # data_key: Tuple[str, ...] = ("img", "joint_positions", "xhand_pos")
-    data_key: Tuple[str, ...] = ("joint_positions", "xhand_pos", "xhand_tactile")
-    
+    data_key: Tuple[str, ...] = (
+        "joint_positions",
+        "xhand_pos",
+        "xhand_tactile",
+    )
     # Image encoder (only needed if "img" in data_key)
     im_encoder: Literal["scratch", "DINO", "CLIP", "DINOv3"] = "DINOv3"
     im_key: Tuple[str, ...] = ("base_rgb")
@@ -74,11 +87,19 @@ class DataConfig:
     # Set to empty string if not using DINOv3
     dinov3_model_dir: str = '/home/wangyenjen/dinov3'
     dinov3_weights_path: str = '/home/wangyenjen/dinov3/dinov3.ckpt'
-    
+
     # Output action space
     pred_head_act: bool = False
     pred_waist_act: bool = False
     base_action_dim: int = 24
+
+    @property
+    def data_dim(self) -> Dict[str, int]:
+        data_dim = {}
+        for key in self.data_key:
+            if key != "img":
+                data_dim[key] = self.INPUT_DIM[key]
+        return data_dim
 
     @property
     def action_dim(self) -> int:

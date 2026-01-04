@@ -11,16 +11,6 @@ from utils.obs import get_observation
 from utils.obs import minmax_norm_data, minmax_unnorm_data
 
 
-RT_DIM = {
-    "joint_positions": 12,
-    "joint_velocities": 12,
-    "eef_speed": 12,
-    "ee_pos_quat": 12,
-    "xhand_pos": 12,
-    "xhand_tactile": 1800
-}
-
-
 def create_sample_indices(
     episode_ends: np.ndarray,
     sequence_length: int,
@@ -151,6 +141,7 @@ class Dataset(torch.utils.data.Dataset):
         percentiles: Optional[Dict[str, float]] = None,
     ):
         self.data_key = data_key
+        self.data_dim = config.data.data_dim
         self.pre_horizon = config.dp.pre_horizon
         self.obs_horizon = config.dp.obs_horizon
         self.act_horizon = config.dp.act_horizon
@@ -178,7 +169,7 @@ class Dataset(torch.utils.data.Dataset):
                 )
             else:
                 train_data["data"][rt] = np.zeros(
-                    (num_data_point, RT_DIM[rt]), dtype=np.float32
+                    (num_data_point, self.data_dim[rt]), dtype=np.float32
                 )
         train_data["meta"] = {"episode_ends": []}
 
@@ -205,7 +196,12 @@ class Dataset(torch.utils.data.Dataset):
                 train_data["data"][rt][data_index:data_index+data_length] = obs[rt]
 
             # action space
-            act = np.stack([d["action"] for d in data])
+            # TODO: due to project inconsistency, to be solved in the future
+            if "action" in data[0].keys():
+                act = np.stack([d["action"] for d in data])
+            else:
+                act = np.stack([d["actions"] for d in data])
+
             if config.data.pred_head_act:
                 head_act = np.stack([d["head_actions"] for d in data])
                 act = np.concatenate([act, head_act], axis=1)
