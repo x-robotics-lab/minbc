@@ -19,6 +19,8 @@ Disclaimer: This codebase is under active development. For the reference impleme
 ### Install Dependencies
 
 ```bash
+conda create -n minbc python=3.11
+conda activate minbc
 pip install -r requirements.txt
 ```
 
@@ -33,6 +35,7 @@ Download the `gr1_dishwasher_debug` dataset
 gdown 1iQJRAC0CMp4P2UhDFx9o1tBmG4bGfGkF -O data/gr1_dishwasher_debug.zip
 cd data
 unzip gr1_dishwasher_debug.zip -d ./
+rm gr1_dishwasher_debug.zip
 cd ../
 ```
 
@@ -49,7 +52,7 @@ data/
 Using this minimal data, you can run the following command for training and evaluation:
 ```
 python train.py train --gpu 0 --seed 0 \
---optim.num_epoch 100 --optim.learning-rate 0.0005 --optim.batch-size 64 \  # learning algorithm
+--optim.num_epoch 100 --optim.learning-rate 0.0005 --optim.batch-size 64 \
 --data.pred-head-act \
 --policy-type bc --dp.action_decoder cond_hourglass --data.base_action_dim 26 \
 --data.data-key img gr1_upper hand_qpos --data.im-key head_image left_wrist_image right_wrist_image \

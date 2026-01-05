@@ -78,7 +78,7 @@ class DataConfig:
     )
     # Image encoder (only needed if "img" in data_key)
     im_encoder: Literal["scratch", "DINO", "CLIP", "DINOv3"] = "DINOv3"
-    im_key: Tuple[str, ...] = ("base_rgb")
+    im_key: Tuple[str, ...] = ("base_rgb",)
     im_channel: int = 3
     im_height: int = 240
     im_width: int = 320
